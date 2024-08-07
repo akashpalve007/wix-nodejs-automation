@@ -65,7 +65,7 @@ function initializeUserMessages(phoneNumber) {
 function sendMessage(phoneNumber, message) {
   const apiUrl = "https://graph.facebook.com/v13.0/356986240839037/messages";
   const apiToken =
-    "EAAXSzbP7mioBOyJw058qr1dzRGmyjycYh7vByNoZBoLEq0I0BOJcsUleZA3TPdBA1I6dzLZANSVvx2XceRk31NDY9EujYvz8b5JPScjUC7v7LLMc4Odf51NDfKwxjQulW9lE2lLBGZAzFWoF1kQaYGXGX34T5PFXCAyKvZCIatIbz6QqXq97zZB9HNkOzaSZC9hyisx7Xzf3QJiM3ZBDKKcZD";
+    "EAAXSzbP7mioBO12HoKqxzWeHoaI1XAgHJwC5btVZAcE0Nvk3ioDl6KLXnbHx2rG8h1rd5LRZBiLdqFOmZBRVGwh0L8wZBuO2e84HleHbajyU0xQZCbBFJbpAh83LtOWgAsNeZB9oogu0WfmxAtXjkKq6p9RhwWdIk9z2gdjWZCAtfAuqZCEZCLt0Q8cKNKJrZCeruncQZDZD";
 
   axios
     .post(
