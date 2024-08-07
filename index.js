@@ -6,6 +6,13 @@ const app = express();
 
 app.use(bodyParser.json());
 
+app.get("/test", (req, res) => {
+  res.json({
+    message: "GET route is working!",
+    timestamp: new Date(),
+  });
+});
+
 // In-memory storage for user message scheduling
 const users = {}; // Key: phoneNumber, Value: array of dates for scheduled messages
 
