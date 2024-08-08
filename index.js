@@ -1,75 +1,48 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
-const cron = require("node-cron");
-const app = express();
 
+const app = express();
 app.use(bodyParser.json());
 
-app.get("/test", (req, res) => {
-  res.json({
-    message: "GET route is working!",
-    timestamp: new Date(),
-  });
-});
-
-// In-memory storage for user message scheduling
-const users = {}; // Key: phoneNumber, Value: array of dates for scheduled messages
+// Replace with your WhatsApp API credentials and endpoint
+const WHATSAPP_API_URL =
+  "https://graph.facebook.com/v13.0/356986240839037/messages";
+const WHATSAPP_API_TOKEN =
+  "EAAXSzbP7mioBO12HoKqxzWeHoaI1XAgHJwC5btVZAcE0Nvk3ioDl6KLXnbHx2rG8h1rd5LRZBiLdqFOmZBRVGwh0L8wZBuO2e84HleHbajyU0xQZCbBFJbpAh83LtOWgAsNeZB9oogu0WfmxAtXjkKq6p9RhwWdIk9z2gdjWZCAtfAuqZCEZCLt0Q8cKNKJrZCeruncQZDZD";
 
 // Endpoint to receive WhatsApp messages
-app.post("/whatsapp-webhook", (req, res) => {
-  const entry = req.body.entry[0];
-  const messages = entry.changes[0].value.messages;
+app.post("/whatsapp-webhook", async (req, res) => {
+  try {
+    const entry = req.body.entry[0];
+    const messages = entry.changes[0].value.messages;
 
-  if (messages && messages.length > 0) {
-    const phoneNumber = messages[0].from;
-    const messageContent = messages[0].text.body;
+    if (messages && messages.length > 0) {
+      const phoneNumber = messages[0].from;
+      const messageContent = messages[0].text.body.toLowerCase(); // Convert to lowercase for comparison
 
-    console.log(`Received message from: ${phoneNumber}`);
+      console.log(`Received message from: ${phoneNumber}`);
+      console.log(`Message content: ${messageContent}`);
 
-    // Initialize scheduling for the user
-    initializeUserMessages(phoneNumber);
+      if (messageContent === "send") {
+        await sendMessage(phoneNumber, "Thanks for Choosing Us");
+      }
 
-    res.sendStatus(200);
+      res.sendStatus(200);
+    } else {
+      res.sendStatus(204); // No content
+    }
+  } catch (error) {
+    console.error("Error processing message:", error);
+    res.sendStatus(500); // Internal Server Error
   }
 });
 
-// Initialize the user message schedule
-function initializeUserMessages(phoneNumber) {
-  if (!users[phoneNumber]) {
-    const startDate = new Date();
-    users[phoneNumber] = [];
-
-    // Schedule 28 messages
-    for (let i = 1; i <= 28; i++) {
-      const messageDate = new Date(startDate);
-      messageDate.setDate(startDate.getDate() + i);
-
-      users[phoneNumber].push({
-        date: messageDate,
-        message: `This is your day ${i} message.`,
-      });
-
-      // Schedule the message
-      cron.schedule(
-        `0 0 ${messageDate.getDate()} ${messageDate.getMonth() + 1} *`,
-        () => {
-          sendMessage(phoneNumber, `This is your day ${i} message.`);
-        }
-      );
-    }
-  }
-}
-
 // Function to send a message via WhatsApp Business API
-function sendMessage(phoneNumber, message) {
-  const apiUrl = "https://graph.facebook.com/v13.0/356986240839037/messages";
-  const apiToken =
-    "EAAXSzbP7mioBO12HoKqxzWeHoaI1XAgHJwC5btVZAcE0Nvk3ioDl6KLXnbHx2rG8h1rd5LRZBiLdqFOmZBRVGwh0L8wZBuO2e84HleHbajyU0xQZCbBFJbpAh83LtOWgAsNeZB9oogu0WfmxAtXjkKq6p9RhwWdIk9z2gdjWZCAtfAuqZCEZCLt0Q8cKNKJrZCeruncQZDZD";
-
-  axios
-    .post(
-      apiUrl,
+async function sendMessage(phoneNumber, message) {
+  try {
+    await axios.post(
+      WHATSAPP_API_URL,
       {
         messaging_product: "whatsapp",
         to: phoneNumber,
@@ -77,17 +50,15 @@ function sendMessage(phoneNumber, message) {
       },
       {
         headers: {
-          Authorization: `Bearer ${apiToken}`,
+          Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
           "Content-Type": "application/json",
         },
       }
-    )
-    .then((response) => {
-      console.log(`Message sent to ${phoneNumber}: ${message}`);
-    })
-    .catch((error) => {
-      console.error("Error sending message:", error);
-    });
+    );
+    console.log(`Message sent to ${phoneNumber}: ${message}`);
+  } catch (error) {
+    console.error("Error sending message:", error);
+  }
 }
 
 app.listen(3000, () => {
