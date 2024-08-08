@@ -11,27 +11,17 @@ const WHATSAPP_API_URL =
 const WHATSAPP_API_TOKEN =
   "EAAXSzbP7mioBO12HoKqxzWeHoaI1XAgHJwC5btVZAcE0Nvk3ioDl6KLXnbHx2rG8h1rd5LRZBiLdqFOmZBRVGwh0L8wZBuO2e84HleHbajyU0xQZCbBFJbpAh83LtOWgAsNeZB9oogu0WfmxAtXjkKq6p9RhwWdIk9z2gdjWZCAtfAuqZCEZCLt0Q8cKNKJrZCeruncQZDZD";
 
-// Endpoint to receive WhatsApp messages
+// Handle incoming messages from Wix webhook
 app.post("/whatsapp-webhook", async (req, res) => {
   try {
-    const entry = req.body.entry[0];
-    const messages = entry.changes[0].value.messages;
+    const { summary, contactId, visitorId, contact } = req.body;
+    const messageContent = summary.toLowerCase();
 
-    if (messages && messages.length > 0) {
-      const phoneNumber = messages[0].from;
-      const messageContent = messages[0].text.body.toLowerCase(); // Convert to lowercase for comparison
-
-      console.log(`Received message from: ${phoneNumber}`);
-      console.log(`Message content: ${messageContent}`);
-
-      if (messageContent === "send") {
-        await sendMessage(phoneNumber, "Thanks for Choosing Us");
-      }
-
-      res.sendStatus(200);
-    } else {
-      res.sendStatus(204); // No content
+    if (messageContent === "send") {
+      await sendMessage(contactId, "Thanks for Choosing Us");
     }
+
+    res.sendStatus(200);
   } catch (error) {
     console.error("Error processing message:", error);
     res.sendStatus(500); // Internal Server Error
