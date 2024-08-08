@@ -21,7 +21,7 @@ app.post("/whatsapp-webhook", async (req, res) => {
 
     // Send a WhatsApp message if the summary (message content) is "send"
     if (summary.toLowerCase() === "send") {
-      await sendWhatsAppMessage(phoneNumber, "Thanks for Choosing Us");
+      await sendWhatsAppMessage(phoneNumber);
     }
 
     res.sendStatus(200); // Acknowledge receipt of the webhook
@@ -32,16 +32,27 @@ app.post("/whatsapp-webhook", async (req, res) => {
 });
 
 // Function to send a message via WhatsApp Business API
-async function sendWhatsAppMessage(phoneNumber, message) {
+async function sendWhatsAppMessage(phoneNumber) {
   const data = {
     messaging_product: "whatsapp",
     to: phoneNumber,
     type: "template",
     template: {
-      name: "hello_world",
+      name: "custom_template", // Use the name of your actual template
       language: {
         code: "en_US",
       },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            {
+              type: "text",
+              text: "Thanks for Choosing LifeScaping.", // Custom message
+            },
+          ],
+        },
+      ],
     },
   };
 
