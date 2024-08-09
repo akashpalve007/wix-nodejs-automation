@@ -38,21 +38,21 @@ async function sendWhatsAppMessage(phoneNumber) {
     to: phoneNumber,
     type: "template",
     template: {
-      name: "custom_template", // Use the name of your actual template
+      name: "_dag_1_intro__dutch", // Your template name
       language: {
-        code: "en_US",
+        code: "nl", // Dutch language code
       },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            {
-              type: "text",
-              text: "Thanks for Choosing LifeScaping.", // Custom message
-            },
-          ],
-        },
-      ],
+      // components: [
+      //   {
+      //     type: "body",
+      //     parameters: [
+      //       {
+      //         type: "text",
+      //         text: "Thanks for Choosing LifeScaping.", // Your custom message
+      //       },
+      //     ],
+      //   },
+      // ],
     },
   };
 
