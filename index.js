@@ -31,8 +31,13 @@ app.post("/webhook", async (req, res) => {
     body.entry.forEach(async (entry) => {
       const changes = entry.changes;
       changes.forEach(async (change) => {
-        const messageData = change.value.messages[0];
-        if (messageData) {
+        // Ensure messages exist before trying to access them
+        if (
+          change.value &&
+          change.value.messages &&
+          change.value.messages.length > 0
+        ) {
+          const messageData = change.value.messages[0];
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
           const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
@@ -49,6 +54,8 @@ app.post("/webhook", async (req, res) => {
           } else {
             console.log(`No automated response sent. Message was: ${msg_body}`);
           }
+        } else {
+          console.log("No messages found in this webhook event");
         }
       });
     });
@@ -73,7 +80,7 @@ async function sendWhatsAppMessage(to, message) {
         "Content-Type": "application/json",
       },
     });
-    console.log(`Message sent successfully: ${response.data}`);
+    console.log(`Message sent successfully: ${JSON.stringify(response.data)}`);
   } catch (error) {
     console.error(
       "Error sending message:",
