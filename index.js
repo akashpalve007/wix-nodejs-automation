@@ -34,16 +34,21 @@ app.post("/webhook", async (req, res) => {
         const messageData = change.value.messages[0];
         if (messageData) {
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
-          const msg_body = messageData.text.body; // The message text
+          const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
           console.log(`Message received from ${from}: ${msg_body}`);
 
-          // Send an automated response
-          const responseMessage =
-            "Thanks for your message! How can I help you?";
-          await sendWhatsAppMessage(from, responseMessage);
-
-          console.log(`Automated message sent to ${from}: ${responseMessage}`);
+          // Check if the message is "start"
+          if (msg_body === "start") {
+            const responseMessage =
+              "Thanks for your message! How can I help you?";
+            await sendWhatsAppMessage(from, responseMessage);
+            console.log(
+              `Automated message sent to ${from}: ${responseMessage}`
+            );
+          } else {
+            console.log(`No automated response sent. Message was: ${msg_body}`);
+          }
         }
       });
     });
