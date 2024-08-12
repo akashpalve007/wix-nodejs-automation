@@ -2,26 +2,42 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
+const cron = require("node-cron");
 
 const app = express();
 app.use(bodyParser.json());
 
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
-
-// Webhook verification
-app.get("/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-
-  if (mode && token === VERIFY_TOKEN) {
-    console.log("Webhook verified successfully");
-    res.status(200).send(challenge);
-  } else {
-    console.log("Webhook verification failed");
-    res.sendStatus(403);
-  }
-});
+// Template names for 28 days
+const templateNames = [
+  "_dag_1_intro__dutch",
+  "start__dag_2",
+  "start__dag_3",
+  "start__dag_4",
+  "start__dag_5",
+  "start__dag_6",
+  "start__dag7",
+  "start__dag8",
+  "start__dag9",
+  "start__dag10",
+  "start__dag11",
+  "start__dag12",
+  "start__dag13",
+  "start__dag14",
+  "start__dag15",
+  "start__dag16",
+  "start__dag17",
+  "start__dag18",
+  "start__dag19",
+  "start__dag20",
+  "start__dag21",
+  "start__dag22",
+  "start__dag23",
+  "start__dag24",
+  "start__dag25",
+  "start__dag26",
+  "start__dag27",
+  "kopie_van_start__dag28",
+];
 
 // Webhook for receiving messages
 app.post("/webhook", async (req, res) => {
@@ -31,7 +47,6 @@ app.post("/webhook", async (req, res) => {
     body.entry.forEach(async (entry) => {
       const changes = entry.changes;
       changes.forEach(async (change) => {
-        // Ensure messages exist before trying to access them
         if (
           change.value &&
           change.value.messages &&
@@ -41,16 +56,14 @@ app.post("/webhook", async (req, res) => {
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
           const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
-          console.log(`Message received from ${from}: ${msg_body}`);
-
-          // Check if the message is "start"
           if (msg_body === "start") {
-            const responseMessage =
-              "Thanks for your message! How can I help you?";
-            await sendWhatsAppMessage(from, responseMessage);
-            console.log(
-              `Automated message sent to ${from}: ${responseMessage}`
-            );
+            // Send the Day 1 template immediately
+            sendTemplateMessage(from, templateNames[0]);
+
+            // Schedule the next 27 days of messages
+            for (let i = 1; i < templateNames.length; i++) {
+              scheduleMessage(from, templateNames[i], i);
+            }
           } else {
             console.log(`No automated response sent. Message was: ${msg_body}`);
           }
@@ -66,12 +79,19 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-async function sendWhatsAppMessage(to, message) {
+// Function to send a template message
+async function sendTemplateMessage(to, templateName) {
   const url = `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`;
   const data = {
     messaging_product: "whatsapp",
     to: to,
-    text: { body: message },
+    type: "template",
+    template: {
+      name: templateName,
+      language: {
+        code: "nl", // Dutch language code
+      },
+    },
   };
   try {
     const response = await axios.post(url, data, {
@@ -80,13 +100,40 @@ async function sendWhatsAppMessage(to, message) {
         "Content-Type": "application/json",
       },
     });
-    console.log(`Message sent successfully: ${JSON.stringify(response.data)}`);
+    console.log(
+      `Template message "${templateName}" sent successfully to ${to}`
+    );
   } catch (error) {
     console.error(
-      "Error sending message:",
+      "Error sending template message:",
       error.response ? error.response.data : error.message
     );
   }
+}
+
+// Function to schedule a message
+function scheduleMessage(to, templateName, dayOffset) {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset); // Schedule for the next days
+
+  const day = date.getDate();
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+
+  const cronTime = `0 7 ${day} ${month} *`;
+
+  cron.schedule(
+    cronTime,
+    () => {
+      sendTemplateMessage(to, templateName);
+      console.log(
+        `Scheduled template "${templateName}" sent to ${to} on ${date}`
+      );
+    },
+    {
+      timezone: "Etc/UTC", // You can adjust the timezone according to your needs
+    }
+  );
 }
 
 // Start the server
