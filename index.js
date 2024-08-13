@@ -7,7 +7,7 @@ const cron = require("node-cron");
 const app = express();
 app.use(bodyParser.json());
 
-// Template names for 28 days
+// Template names for 28 days (for testing, 28 intervals of 2 minutes)
 const templateNames = [
   "_dag_1_intro__dutch",
   "start__dag_2",
@@ -60,9 +60,9 @@ app.post("/webhook", async (req, res) => {
             // Send the Day 1 template immediately
             sendTemplateMessage(from, templateNames[0]);
 
-            // Schedule the next 27 days of messages
+            // Schedule the next 27 templates at 2-minute intervals
             for (let i = 1; i < templateNames.length; i++) {
-              scheduleMessage(from, templateNames[i], i);
+              scheduleMessage(from, templateNames[i], i * 2); // i * 2 means every 2 minutes
             }
           } else {
             console.log(`No automated response sent. Message was: ${msg_body}`);
@@ -111,28 +111,26 @@ async function sendTemplateMessage(to, templateName) {
   }
 }
 
-// Function to schedule a message
-function scheduleMessage(to, templateName, dayOffset) {
+// Function to schedule a message at a 2-minute interval
+function scheduleMessage(to, templateName, minuteOffset) {
   const date = new Date();
-  date.setDate(date.getDate() + dayOffset); // Schedule for the next days
+  const scheduledMinute = (date.getMinutes() + minuteOffset) % 60;
+  const scheduledHour =
+    date.getMinutes() + minuteOffset >= 60
+      ? date.getHours() + 1
+      : date.getHours();
 
-  const day = date.getDate();
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
+  const cronTime = `${scheduledMinute} ${scheduledHour} * * *`;
 
-  const cronTime = `0 7 ${day} ${month} *`;
+  cron.schedule(cronTime, () => {
+    console.log(
+      `Running scheduled job for ${templateName} at ${new Date().toISOString()}`
+    );
+    sendTemplateMessage(to, templateName);
+  });
 
-  cron.schedule(
-    cronTime,
-    () => {
-      sendTemplateMessage(to, templateName);
-      console.log(
-        `Scheduled template "${templateName}" sent to ${to} on ${date}`
-      );
-    },
-    {
-      timezone: "Etc/UTC", // You can adjust the timezone according to your needs
-    }
+  console.log(
+    `Scheduled template "${templateName}" to be sent to ${to} at ${scheduledHour}:${scheduledMinute}.`
   );
 }
 
