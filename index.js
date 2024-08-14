@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
 const cron = require("node-cron");
+const moment = require("moment-timezone");
 
 const app = express();
 app.use(bodyParser.json());
@@ -56,13 +57,16 @@ app.post("/webhook", async (req, res) => {
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
           const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
+          // Simulate capturing the user's timezone (in reality, you'd need a way to determine or receive this)
+          const userTimezone = "Europe/Amsterdam"; // Example; in practice, capture this dynamically
+
           if (msg_body === "start") {
             // Send the Day 1 template immediately
             sendTemplateMessage(from, templateNames[0]);
 
-            // Schedule the next 27 templates at 7:00 AM daily
+            // Schedule the next 27 templates at 7:00 AM in the user's timezone
             for (let i = 1; i < templateNames.length; i++) {
-              scheduleMessageAt7AM(from, templateNames[i], i);
+              scheduleMessageAt7AM(from, templateNames[i], i, userTimezone);
             }
           } else {
             console.log(`No automated response sent. Message was: ${msg_body}`);
@@ -108,34 +112,34 @@ async function sendTemplateMessage(to, templateName) {
       "Error sending template message:",
       error.response ? error.response.data : error.message
     );
+    console.error("Full error:", error); // Additional error logging
   }
 }
 
-// Function to schedule a message at 7:00 AM daily
-function scheduleMessageAt7AM(to, templateName, dayOffset) {
-  const date = new Date();
-  date.setDate(date.getDate() + dayOffset); // Schedule for the next days
-
-  const scheduledDay = date.getDate();
-  const scheduledMonth = date.getMonth() + 1;
-
-  const cronTime = `0 7 ${scheduledDay} ${scheduledMonth} *`;
+// Function to schedule a message at 7:00 AM daily in the user's timezone
+function scheduleMessageAt7AM(to, templateName, dayOffset, timezone) {
+  const startDate = moment().tz(timezone).startOf("day").add(dayOffset, "days");
+  const cronTime = `${startDate.minutes()} ${startDate.hours()} ${startDate.date()} ${
+    startDate.month() + 1
+  } *`;
 
   cron.schedule(
     cronTime,
     () => {
       console.log(
-        `Running scheduled job for ${templateName} at ${new Date().toISOString()}`
+        `Running scheduled job for ${templateName} at ${moment()
+          .tz(timezone)
+          .format()}`
       );
       sendTemplateMessage(to, templateName);
     },
     {
-      timezone: "Europe/Amsterdam", // Adjust to the correct timezone
+      timezone: timezone, // Schedule in the user's timezone
     }
   );
 
   console.log(
-    `Scheduled template "${templateName}" to be sent to ${to} at 7:00 AM on day ${scheduledDay} of month ${scheduledMonth}.`
+    `Scheduled template "${templateName}" to be sent to ${to} at 7:00 AM ${timezone} time on day ${dayOffset}.`
   );
 }
 
