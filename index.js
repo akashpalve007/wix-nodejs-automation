@@ -58,26 +58,34 @@ app.post("/webhook", async (req, res) => {
         ) {
           const messageData = change.value.messages[0];
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
-          const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
-          // Simulate capturing the user's timezone (in reality, you'd need a way to determine or receive this)
-          const userTimezone = "Europe/Amsterdam"; // Example; in practice, capture this dynamically
+          // Ensure messageData.text exists before trying to access body
+          if (messageData.text && messageData.text.body) {
+            const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
-          if (msg_body === "start") {
-            // Send the Day 1 template immediately
-            sendTemplateMessage(from, templateNames[0]);
+            // Simulate capturing the user's timezone (in reality, you'd need a way to determine or receive this)
+            const userTimezone = "Europe/Amsterdam"; // Example; in practice, capture this dynamically
 
-            // Schedule the next 27 templates at 7:00 AM in the user's timezone
-            for (let i = 1; i < templateNames.length; i++) {
-              scheduleMessageWithBuffer(
-                from,
-                templateNames[i],
-                i,
-                userTimezone
+            if (msg_body === "start") {
+              // Send the Day 1 template immediately
+              sendTemplateMessage(from, templateNames[0]);
+
+              // Schedule the next 27 templates at 7:00 AM in the user's timezone
+              for (let i = 1; i < templateNames.length; i++) {
+                scheduleMessageWithBuffer(
+                  from,
+                  templateNames[i],
+                  i,
+                  userTimezone
+                );
+              }
+            } else {
+              console.log(
+                `No automated response sent. Message was: ${msg_body}`
               );
             }
           } else {
-            console.log(`No automated response sent. Message was: ${msg_body}`);
+            console.log("No text body found in the message.");
           }
         } else {
           console.log("No messages found in this webhook event");
