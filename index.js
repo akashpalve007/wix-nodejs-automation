@@ -40,6 +40,9 @@ const templateNames = [
   "kopie_van_start__dag28",
 ];
 
+// Buffer time in minutes (1 hour before and 1 hour after)
+const BUFFER_TIME_MINUTES = 60;
+
 // Webhook for receiving messages
 app.post("/webhook", async (req, res) => {
   const body = req.body;
@@ -66,7 +69,12 @@ app.post("/webhook", async (req, res) => {
 
             // Schedule the next 27 templates at 7:00 AM in the user's timezone
             for (let i = 1; i < templateNames.length; i++) {
-              scheduleMessageAt7AM(from, templateNames[i], i, userTimezone);
+              scheduleMessageWithBuffer(
+                from,
+                templateNames[i],
+                i,
+                userTimezone
+              );
             }
           } else {
             console.log(`No automated response sent. Message was: ${msg_body}`);
@@ -116,22 +124,38 @@ async function sendTemplateMessage(to, templateName) {
   }
 }
 
-// Function to schedule a message at 7:00 AM daily in the user's timezone
-function scheduleMessageAt7AM(to, templateName, dayOffset, timezone) {
-  const startDate = moment().tz(timezone).startOf("day").add(dayOffset, "days");
-  const cronTime = `${startDate.minutes()} ${startDate.hours()} ${startDate.date()} ${
-    startDate.month() + 1
-  } *`;
+// Function to schedule a message with a buffer time around 7:00 AM in the user's timezone
+function scheduleMessageWithBuffer(to, templateName, dayOffset, timezone) {
+  const scheduledTime = moment()
+    .tz(timezone)
+    .startOf("day")
+    .add(dayOffset, "days")
+    .hour(7); // 7:00 AM on the target day
+  const startBufferTime = scheduledTime
+    .clone()
+    .subtract(BUFFER_TIME_MINUTES, "minutes");
+  const endBufferTime = scheduledTime
+    .clone()
+    .add(BUFFER_TIME_MINUTES, "minutes");
 
-  cron.schedule(
+  // This cron will run every minute, but only send the message if within the buffer window
+  const cronTime = "* * * * *"; // Every minute
+
+  const task = cron.schedule(
     cronTime,
     () => {
-      console.log(
-        `Running scheduled job for ${templateName} at ${moment()
-          .tz(timezone)
-          .format()}`
-      );
-      sendTemplateMessage(to, templateName);
+      const currentTime = moment().tz(timezone);
+      if (currentTime.isBetween(startBufferTime, endBufferTime)) {
+        console.log(
+          `Running scheduled job for ${templateName} at ${currentTime.format()} (Scheduled for: ${scheduledTime.format()})`
+        );
+        sendTemplateMessage(to, templateName);
+        task.stop(); // Stop the cron job after successful execution
+      } else {
+        console.log(
+          `Current time ${currentTime.format()} is not within the buffer window for ${templateName}`
+        );
+      }
     },
     {
       timezone: timezone, // Schedule in the user's timezone
@@ -139,7 +163,7 @@ function scheduleMessageAt7AM(to, templateName, dayOffset, timezone) {
   );
 
   console.log(
-    `Scheduled template "${templateName}" to be sent to ${to} at 7:00 AM ${timezone} time on day ${dayOffset}.`
+    `Scheduled template "${templateName}" to be sent to ${to} around 7:00 AM ${timezone} time on day ${dayOffset}. Buffer window: ${startBufferTime.format()} to ${endBufferTime.format()}.`
   );
 }
 
