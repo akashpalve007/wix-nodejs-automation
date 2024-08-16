@@ -67,14 +67,17 @@ app.post("/webhook", async (req, res) => {
               // Send the Day 1 template immediately
               sendTemplateMessage(from, templateNames[0]);
 
-              // Schedule the next 27 templates every 5 minutes for testing
+              // Schedule the next 27 templates every 24 hours
+              let nextTriggerTime = moment().tz(userTimezone).add(24, "hours"); // 24 hours from now
+
               for (let i = 1; i < templateNames.length; i++) {
-                scheduleMessageEveryFiveMinutes(
+                scheduleMessageEveryDay(
                   from,
                   templateNames[i],
-                  i * 5,
+                  nextTriggerTime,
                   userTimezone
                 );
+                nextTriggerTime = nextTriggerTime.add(24, "hours"); // Increment by 24 hours for the next message
               }
             } else {
               console.log(
@@ -129,23 +132,17 @@ async function sendTemplateMessage(to, templateName) {
   }
 }
 
-// Function to schedule a message every 5 minutes for testing purposes
-function scheduleMessageEveryFiveMinutes(
-  to,
-  templateName,
-  minuteOffset,
-  timezone
-) {
-  const scheduledTime = moment().tz(timezone).add(minuteOffset, "minutes");
-
-  // This cron will trigger at the exact scheduled time
-  const cronTime = `${scheduledTime.minutes()} ${scheduledTime.hours()} * * *`;
+// Function to schedule a message every 24 hours
+function scheduleMessageEveryDay(to, templateName, triggerTime, timezone) {
+  const cronTime = `${triggerTime.minutes()} ${triggerTime.hours()} ${triggerTime.date()} ${
+    triggerTime.month() + 1
+  } *`;
 
   const task = cron.schedule(
     cronTime,
     () => {
       console.log(
-        `Running scheduled job for ${templateName} at ${scheduledTime.format()}`
+        `Running scheduled job for ${templateName} at ${triggerTime.format()}`
       );
       sendTemplateMessage(to, templateName);
       task.stop(); // Stop the cron job after successful execution
@@ -156,7 +153,7 @@ function scheduleMessageEveryFiveMinutes(
   );
 
   console.log(
-    `Scheduled template "${templateName}" to be sent to ${to} at ${scheduledTime.format()} (${timezone}).`
+    `Scheduled template "${templateName}" to be sent to ${to} at ${triggerTime.format()} (${timezone}).`
   );
 }
 
