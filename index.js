@@ -8,7 +8,6 @@ const moment = require("moment-timezone");
 const app = express();
 app.use(bodyParser.json());
 
-// Template names for 28 days
 const templateNames = [
   "_dag_1_intro__dutch",
   "start__dag_2",
@@ -40,7 +39,8 @@ const templateNames = [
   "kopie_van_start__dag28",
 ];
 
-// Webhook for receiving messages
+const scheduledMessages = {}; // Store scheduled messages
+
 app.post("/webhook", async (req, res) => {
   const body = req.body;
 
@@ -56,28 +56,24 @@ app.post("/webhook", async (req, res) => {
           const messageData = change.value.messages[0];
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
 
-          // Ensure messageData.text exists before trying to access body
           if (messageData.text && messageData.text.body) {
             const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
 
-            // Simulate capturing the user's timezone (in reality, you'd need a way to determine or receive this)
             const userTimezone = "Europe/Amsterdam"; // Example; in practice, capture this dynamically
 
             if (msg_body === "start") {
-              // Send the Day 1 template immediately
               sendTemplateMessage(from, templateNames[0]);
 
-              // Schedule the next 27 templates every 24 hours
               let nextTriggerTime = moment().tz(userTimezone).add(24, "hours"); // 24 hours from now
 
               for (let i = 1; i < templateNames.length; i++) {
-                scheduleMessageEveryDay(
+                scheduleMessage(
                   from,
                   templateNames[i],
                   nextTriggerTime,
                   userTimezone
                 );
-                nextTriggerTime = nextTriggerTime.add(24, "hours"); // Increment by 24 hours for the next message
+                nextTriggerTime = nextTriggerTime.add(24, "hours");
               }
             } else {
               console.log(
@@ -132,29 +128,43 @@ async function sendTemplateMessage(to, templateName) {
   }
 }
 
-// Function to schedule a message every 24 hours
-function scheduleMessageEveryDay(to, templateName, triggerTime, timezone) {
-  // Use a simpler cron expression for daily scheduling
-  const cronTime = `${triggerTime.minutes()} ${triggerTime.hours()} * * *`;
-
-  const task = cron.schedule(
-    cronTime,
-    () => {
-      console.log(
-        `Running scheduled job for ${templateName} at ${triggerTime.format()}`
-      );
-      sendTemplateMessage(to, templateName);
-      task.stop(); // Stop the cron job after successful execution
-    },
-    {
-      timezone: timezone, // Schedule in the user's timezone
-    }
-  );
-
+// Function to schedule a message
+function scheduleMessage(to, templateName, triggerTime, timezone) {
+  scheduledMessages[to] = scheduledMessages[to] || [];
+  scheduledMessages[to].push({
+    templateName: templateName,
+    triggerTime: triggerTime,
+    timezone: timezone,
+    sent: false,
+  });
   console.log(
-    `Scheduled template "${templateName}" to be sent to ${to} at ${triggerTime.format()} (${timezone}).`
+    `Scheduled template "${templateName}" for ${to} at ${triggerTime.format()} (${timezone}).`
   );
 }
+
+// Cron job to check for pending messages every 15 minutes
+cron.schedule("*/15 * * * *", () => {
+  console.log("Running 15-minute check for pending messages...");
+  const now = moment();
+
+  for (const [to, messages] of Object.entries(scheduledMessages)) {
+    messages.forEach((message) => {
+      const bufferTimeStart = moment(message.triggerTime).subtract(
+        15,
+        "minutes"
+      );
+      const bufferTimeEnd = moment(message.triggerTime).add(15, "minutes");
+
+      if (!message.sent && now.isBetween(bufferTimeStart, bufferTimeEnd)) {
+        sendTemplateMessage(to, message.templateName);
+        message.sent = true;
+        console.log(
+          `Sent message "${message.templateName}" to ${to} at ${now.format()}`
+        );
+      }
+    });
+  }
+});
 
 // Start the server
 const PORT = process.env.PORT || 3000;
