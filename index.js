@@ -134,9 +134,8 @@ async function sendTemplateMessage(to, templateName) {
 
 // Function to schedule a message every 24 hours
 function scheduleMessageEveryDay(to, templateName, triggerTime, timezone) {
-  const cronTime = `${triggerTime.minutes()} ${triggerTime.hours()} ${triggerTime.date()} ${
-    triggerTime.month() + 1
-  } *`;
+  // Use a simpler cron expression for daily scheduling
+  const cronTime = `${triggerTime.minutes()} ${triggerTime.hours()} * * *`;
 
   const task = cron.schedule(
     cronTime,
