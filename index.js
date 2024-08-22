@@ -39,7 +39,8 @@ const templateNames = [
   "kopie_van_start__dag28",
 ];
 
-const scheduledMessages = {}; // Store scheduled messages
+// Object to store scheduled messages in memory
+const scheduledMessages = {};
 
 app.post("/webhook", async (req, res) => {
   const body = req.body;
@@ -47,7 +48,9 @@ app.post("/webhook", async (req, res) => {
   if (body.object === "whatsapp_business_account") {
     body.entry.forEach(async (entry) => {
       const changes = entry.changes;
-      changes.forEach(async (change) => {
+      let messagesFound = false;
+
+      for (const change of changes) {
         if (
           change.value &&
           change.value.messages &&
@@ -57,14 +60,15 @@ app.post("/webhook", async (req, res) => {
           const from = messageData.from; // The WhatsApp ID of the user who sent the message
 
           if (messageData.text && messageData.text.body) {
-            const msg_body = messageData.text.body.toLowerCase(); // Convert the message text to lowercase
-
-            const userTimezone = "Europe/Amsterdam"; // Example; in practice, capture this dynamically
+            const msg_body = messageData.text.body.toLowerCase();
+            const userTimezone = "Europe/Amsterdam"; // Example; capture this dynamically if needed
 
             if (msg_body === "start") {
+              // Send the Day 1 template immediately
               sendTemplateMessage(from, templateNames[0]);
 
-              let nextTriggerTime = moment().tz(userTimezone).add(24, "hours"); // 24 hours from now
+              // Schedule the next 27 templates every 24 hours
+              let nextTriggerTime = moment().tz(userTimezone).add(24, "hours");
 
               for (let i = 1; i < templateNames.length; i++) {
                 scheduleMessage(
@@ -75,18 +79,15 @@ app.post("/webhook", async (req, res) => {
                 );
                 nextTriggerTime = nextTriggerTime.add(24, "hours");
               }
-            } else {
-              console.log(
-                `No automated response sent. Message was: ${msg_body}`
-              );
             }
-          } else {
-            console.log("No text body found in the message.");
+            messagesFound = true;
           }
-        } else {
-          console.log("No messages found in this webhook event");
         }
-      });
+      }
+
+      if (!messagesFound) {
+        console.log("No messages found in this webhook event");
+      }
     });
     res.sendStatus(200);
   } else {
@@ -142,29 +143,37 @@ function scheduleMessage(to, templateName, triggerTime, timezone) {
   );
 }
 
-// Cron job to check for pending messages every 15 minutes
-cron.schedule("*/15 * * * *", () => {
-  console.log("Running 15-minute check for pending messages...");
-  const now = moment();
+// Cron job to check for pending messages every 5 minutes
+cron.schedule("*/5 * * * *", () => {
+  try {
+    console.log(`Starting 5-minute check at ${moment().format()}`);
+    const now = moment();
 
-  for (const [to, messages] of Object.entries(scheduledMessages)) {
-    messages.forEach((message) => {
-      const bufferTimeStart = moment(message.triggerTime).subtract(
-        15,
-        "minutes"
-      );
-      const bufferTimeEnd = moment(message.triggerTime).add(15, "minutes");
-
-      if (!message.sent && now.isBetween(bufferTimeStart, bufferTimeEnd)) {
-        sendTemplateMessage(to, message.templateName);
-        message.sent = true;
-        console.log(
-          `Sent message "${message.templateName}" to ${to} at ${now.format()}`
+    for (const [to, messages] of Object.entries(scheduledMessages)) {
+      messages.forEach((message) => {
+        const bufferTimeStart = moment(message.triggerTime).subtract(
+          5,
+          "minutes"
         );
-      }
-    });
+        const bufferTimeEnd = moment(message.triggerTime).add(5, "minutes");
+
+        if (!message.sent && now.isBetween(bufferTimeStart, bufferTimeEnd)) {
+          sendTemplateMessage(to, message.templateName);
+          message.sent = true;
+          console.log(
+            `Sent message "${message.templateName}" to ${to} at ${now.format()}`
+          );
+        }
+      });
+    }
+
+    console.log(`Finished 5-minute check at ${moment().format()}`);
+  } catch (error) {
+    console.error("Error during 5-minute cron job execution:", error);
   }
 });
+
+console.log("5-minute cron job scheduled successfully.");
 
 // Start the server
 const PORT = process.env.PORT || 3000;
