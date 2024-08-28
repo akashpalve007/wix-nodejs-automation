@@ -9,41 +9,60 @@ const app = express();
 app.use(bodyParser.json());
 
 const templateNames = [
-  "_dag_1_intro__dutch",
-  "start__dag_2",
-  "start__dag_3",
-  "start__dag_4",
-  "start__dag_5",
-  "start__dag_6",
-  "start__dag7",
-  "start__dag8",
-  "start__dag9",
-  "start__dag10",
-  "start__dag11",
-  "start__dag12",
-  "start__dag13",
-  "start__dag14",
-  "start__dag15",
-  "start__dag16",
-  "start__dag17",
-  "start__dag18",
-  "start__dag19",
-  "start__dag20",
-  "start__dag21",
-  "start__dag22",
-  "start__dag23",
-  "start__dag24",
-  "start__dag25",
-  "start__dag26",
-  "start__dag27",
-  "kopie_van_start__dag28",
+  { name: "_dag_1_intro__dutch", time: 0 },
+  { name: "start__dag_2", time: 24 },
+  { name: "start__dag_3", time: 48 },
+  { name: "start__dag_4", time: 72 },
+  { name: "start__dag_5", time: 96 },
+  { name: "start__dag_6", time: 120 },
+  { name: "start__dag7", time: 144 },
+  { name: "start__dag8", time: 168 },
+  { name: "start__dag9", time: 192 },
+  { name: "start__dag10", time: 216 },
+  { name: "start__dag11", time: 240 },
+  { name: "start__dag12", time: 264 },
+  { name: "start__dag13", time: 288 },
+  { name: "start__dag14", time: 312 },
+  { name: "start__dag15", time: 336 },
+  { name: "start__dag16", time: 360 },
+  { name: "start__dag17", time: 384 },
+  { name: "start__dag18", time: 408 },
+  { name: "start__dag19", time: 432 },
+  { name: "start__dag20", time: 456 },
+  { name: "start__dag21", time: 480 },
+  { name: "start__dag22", time: 504 },
+  { name: "start__dag23", time: 528 },
+  { name: "start__dag24", time: 552 },
+  { name: "start__dag25", time: 576 },
+  { name: "start__dag26", time: 600 },
+  { name: "start__dag27", time: 624 },
+  { name: "kopie_van_start__dag28", time: 648 },
 ];
 
 // Object to store scheduled messages in memory
 const scheduledMessages = {};
 
+app.get("/test", (req, res) => {
+  res.send("Server is running successfully")
+})
+
+app.get('/webhook', (req, res) => {
+  const challenge = req.query['hub.challenge'];  // Facebook sends the challenge parameter
+  const verifyToken = req.query['hub.verify_token'];  // Token to verify with your provided token
+
+  // Replace with your verification token
+  const myVerifyToken = "1ec7-2401-4900-1c43-bd37-654e-2dc5-2e7c-de09";
+
+  if (verifyToken === myVerifyToken) {
+    res.send(challenge);  // Respond with the challenge token to verify
+  } else {
+    res.sendStatus(403);  // Forbidden if tokens do not match
+  }
+});
+
 app.post("/webhook", async (req, res) => {
   const body = req.body;
+  console.log("Inside webhook");
 
   if (body.object === "whatsapp_business_account") {
     body.entry.forEach(async (entry) => {
@@ -65,19 +84,21 @@ app.post("/webhook", async (req, res) => {
 
             if (msg_body === "start") {
               // Send the Day 1 template immediately
-              sendTemplateMessage(from, templateNames[0]);
+              sendTemplateMessage(from, templateNames[0].name);
 
               // Schedule the next 27 templates every 24 hours
-              let nextTriggerTime = moment().tz(userTimezone).add(24, "hours");
 
               for (let i = 1; i < templateNames.length; i++) {
+                // const timeInSeconds = templateNames[i].time * 3600;
+                let nextTriggerTime = moment().tz(userTimezone).add(templateNames[i].time, "hours");
+                console.log(templateNames[i].time, nextTriggerTime);
                 scheduleMessage(
                   from,
-                  templateNames[i],
+                  templateNames[i].name,
                   nextTriggerTime,
                   userTimezone
                 );
-                nextTriggerTime = nextTriggerTime.add(24, "hours");
+                // nextTriggerTime = nextTriggerTime.add(24, "hours");
               }
             }
             messagesFound = true;
@@ -148,6 +169,7 @@ cron.schedule("*/5 * * * *", () => {
   try {
     console.log(`Starting 5-minute check at ${moment().format()}`);
     const now = moment();
+    console.log("scheduledMessages", scheduledMessages);
 
     for (const [to, messages] of Object.entries(scheduledMessages)) {
       messages.forEach((message) => {
