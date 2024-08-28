@@ -51,7 +51,8 @@ app.get('/webhook', (req, res) => {
   const verifyToken = req.query['hub.verify_token'];  // Token to verify with your provided token
 
   // Replace with your verification token
-  const myVerifyToken = "1ec7-2401-4900-1c43-bd37-654e-2dc5-2e7c-de09";
+  // const myVerifyToken = "1ec7-2401-4900-1c43-bd37-654e-2dc5-2e7c-de09";
+  const myVerifyToken = process.env.VERIFY_TOKEN;
 
   if (verifyToken === myVerifyToken) {
     res.send(challenge);  // Respond with the challenge token to verify
