@@ -151,6 +151,11 @@ async function sendTemplateMessage(to, templateName) {
   }
 }
 
+app.get('/keep-alive', (req, res) => {
+  console.log('Keep-alive ping received');
+  res.send('Server is awake');
+});
+
 // Function to schedule a message
 function scheduleMessage(to, templateName, triggerTime, timezone) {
   scheduledMessages[to] = scheduledMessages[to] || [];
@@ -166,8 +171,12 @@ function scheduleMessage(to, templateName, triggerTime, timezone) {
 }
 
 // Cron job to check for pending messages every 5 minutes
-cron.schedule("*/5 * * * *", () => {
+cron.schedule("*/5 * * * *", async () => {
   try {
+    const keepAliveRes = await axios.get(`https://wix-nodejs-automation.onrender.com/keep-alive`);
+    if (keepAliveRes) {
+      console.log("keepAliveRes", keepAliveRes)
+    }
     console.log(`Starting 5-minute check at ${moment().format()}`);
     const now = moment();
     console.log("scheduledMessages", scheduledMessages);
