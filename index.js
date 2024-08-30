@@ -171,11 +171,11 @@ function scheduleMessage(to, templateName, triggerTime, timezone) {
 }
 
 // Cron job to check for pending messages every 5 minutes
-cron.schedule("*/5 * * * *", async () => {
+cron.schedule("* * * * *", async () => {
   try {
-    const keepAliveRes = await axios.get(`https://wix-nodejs-automation.onrender.com/keep-alive`);
-    if (keepAliveRes) {
-      console.log("keepAliveRes", keepAliveRes)
+    const keepAliveData = await axios.get(`https://wix-nodejs-automation.onrender.com/keep-alive`);
+    if (keepAliveData.status === 200) {
+      console.log("Keep-alive ping received", keepAliveData.data)
     }
     console.log(`Starting 5-minute check at ${moment().format()}`);
     const now = moment();
