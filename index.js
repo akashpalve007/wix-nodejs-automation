@@ -173,7 +173,7 @@ function scheduleMessage(to, templateName, triggerTime, timezone) {
 // Cron job to check for pending messages every 5 minutes
 cron.schedule("* * * * *", async () => {
   try {
-    const keepAliveData = await axios.get(`https://wix-nodejs-automation.onrender.com/keep-alive`);
+    const keepAliveData = await axios.get(`https://nodejs-whatsapp-automation.onrender.com/keep-alive`);
     if (keepAliveData.status === 200) {
       console.log("Keep-alive ping received", keepAliveData.data)
     }
